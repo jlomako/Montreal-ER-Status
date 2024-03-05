@@ -78,13 +78,14 @@ ui <- bootstrapPage(
             )
           ),
           
-          div(HTML("Some text about the current status of the selected hotel, current patient counts and the occupancy rate."), class="text-start"),
+          div(HTML("Some text about the current status of the selected hospital, patient counts, occupancy rate, wait time etc."), 
+              class="text-start"),
           
           div(
             class = "card-body",
             div(class = "row",
                 div(class = "col-sm-6 text-start",
-                    div(h5("Occupancy Rate", class = "text-start pt-0 pb-2")),
+                    div(h5("Hourly Occupancy Rate", class = "text-start pt-0 pb-2")),
                 ),
                 div(class="col-sm-6 text-end pb-0",
                     actionButton(
@@ -109,29 +110,83 @@ ui <- bootstrapPage(
             div(
               plotOutput('plot_occupancy')
             ),
+            
+          ),  # card body end
+            
+            div(class="card-footer text-start border-bottom", 
+                h5("Occupancy Rate: The occupancy rate refers to the percentage of stretchers that are occupied by patients. An occupancy rate of over 100% indicates that the emergency room is over capacity, typically meaning that there are more patients than there are stretchers.", class="small"),
+            ),
+            
 
-            div(
-              class = "text-start py-3",
-              textOutput('selected_hospital_display')
-            ),            
+          div(
+            class = "card-body",
+
+         #   div(class = "text-end py-0", textOutput('selected_hospital_display')),            
             
             div(
-              h5("Patient Counts", class = "text-start py-3")
+              h5("Hourly Patient Counts: ", class = "text-start pt-2 pb-0"), 
+              div(class = "text-end small",
+                span("Patients Total", style = "color: #121eff;"), 
+                span(" - "), 
+                span("Patients waiting", style = "color: #ff0000;")
+              )
             ),
 
             div(
               plotOutput('plot_patients')
             ),
+          ),  # card body end
+
+          div(class="card-footer text-start", 
+              h5("Patients Waiting: The number of patients in the emergency room who are waiting to be seen by a physician.", class="small "),
+              h5("Patients Total: The total number of patients in the emergency room, including those who are currently waiting to be seen by a physician.", class="small")
+          )
+        )  # card end
+      )  # col end
+    ),  # row end
+    
+    div(
+      class = "row",
+      
+      div(
+        class = "col-md-12 py-2",
+        
+        div(
+          class = "card h-100 text-start",
+          
+          div(
+            class = "card-header",
+            h5("Compare Emergency room status", class = "card-title")
+          ),
+          
+          div(
+            class = "card-body",
             div(
-              h5("See more (will be linked)", class = "text-start py-2")
+              h5("Current Occupancy Rates", class = "text-start py-2")
             ),
             div(
               tableOutput('table_occupancy')
             )
-          )  # card body end
-        )  # card end
-      )  # col end
-    )  # row end
+          ),
+          
+          div(class="card-footer", h5('This website is for informational purposes only. If you are in need of urgent medical treatment, visit your nearest ER or call 9-1-1.
+                                               In case of a non-urgent health issue call 8-1-1', 
+                                      tags$a(href="https://www.quebec.ca/en/health/finding-a-resource/info-sante-811/", "(Info Santé)"),
+                                      class="small")),
+        ) # card end
+      )  # col end 
+    ),  # row 
+    
+    # source & disclaimer
+    div(class="row",
+        div(class="col-sm-12 text-center py-3",
+            div(HTML("Data source: Ministère de la Santé et des Services sociaux du Québec<br>© Copyright 2022-2024,"),
+                tags$a(href="https://github.com/jlomako", "jlomako")
+            ),
+        ),
+    ),
+    
+    
   )  # container end
   
 
