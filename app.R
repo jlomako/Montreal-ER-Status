@@ -7,7 +7,7 @@ library(shiny)
 # get data - start with max
 days <- 30
 getrows <- 24*days
-col_names <- c("Date", "Centre Hospitalier de l'Université de Montréal", "Centre Hospitalier de St. Mary", "CHU Sainte-Justine", "Hôpital de Lachine", "Hôpital de Lasalle", "Hôpital de Soins Psychiatriques de l'Est-de-Montréal", "Hôpital de Verdun", "Hôpital Douglas", "Hôpital du Sacré-Cœur de Montréal", "Hôpital en Santé Mentale Albert-Prévost", "Hôpital Fleury", "Hôpital Général de Montréal", "Hôpital Général du Lakeshore", "Hôpital Général Juif", "Hôpital Jean-Talon", "Hôpital Maisonneuve-Rosemont", "Hôpital Notre-Dame", "Hôpital Royal Victoria", "Hôpital Santa Cabrini", "Institut de Cardiologie de Montréal", "Hôpital de Montréal pour Enfants", "Total Montréal")
+col_names <- c("Date", "Centre Hospitalier de l'Université de Montréal", "Centre Hospitalier de St. Mary", "CHU Sainte-Justine", "Hôpital de Lachine", "Hôpital de Lasalle",  "Hôpital de Verdun", "Hôpital Douglas", "Hôpital Maisonneuve-Rosemont", "Hôpital du Sacré-Cœur de Montréal", "Hôpital en Santé Mentale Albert-Prévost", "Hôpital Fleury", "Hôpital Général de Montréal", "Hôpital Général du Lakeshore", "Hôpital Général Juif", "Hôpital Jean-Talon", "Hôpital Notre-Dame", "Hôpital Royal Victoria", "Hôpital Santa Cabrini", "Institut de Cardiologie de Montréal", "Institut Universitaire en Santé Mentale de Montréal", "Hôpital de Montréal pour Enfants", "Total Montréal")
 file_path <- "https://github.com/jlomako/hospital-occupancy-tracker/raw/main/tables/"
 
 occupancy <- tail(vroom::vroom(paste0(file_path, "occupancy.csv"), show_col_types = F), getrows)
