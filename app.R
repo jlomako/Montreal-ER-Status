@@ -2,52 +2,71 @@ library(dplyr)
 library(ggplot2)
 library(shiny)
 
-# get data
+#occupancy <- tail(vroom::vroom(paste0(file_path, "occupancy.csv"), show_col_types = F, col_names = F), getrows) => error when col_names = F
+
+# get data - start with max
 days <- 30
 getrows <- 24*days
-
 col_names <- c("Date", "Centre Hospitalier de l'Université de Montréal", "Centre Hospitalier de St. Mary", "CHU Sainte-Justine", "Hôpital de Lachine", "Hôpital de Lasalle", "Hôpital de Soins Psychiatriques de l'Est-de-Montréal", "Hôpital de Verdun", "Hôpital Douglas", "Hôpital du Sacré-Cœur de Montréal", "Hôpital en Santé Mentale Albert-Prévost", "Hôpital Fleury", "Hôpital Général de Montréal", "Hôpital Général du Lakeshore", "Hôpital Général Juif", "Hôpital Jean-Talon", "Hôpital Maisonneuve-Rosemont", "Hôpital Notre-Dame", "Hôpital Royal Victoria", "Hôpital Santa Cabrini", "Institut de Cardiologie de Montréal", "Hôpital de Montréal pour Enfants", "Total Montréal")
-
 file_path <- "https://github.com/jlomako/hospital-occupancy-tracker/raw/main/tables/"
 
 occupancy <- tail(vroom::vroom(paste0(file_path, "occupancy.csv"), show_col_types = F), getrows)
 patients_total <- tail(vroom::vroom(paste0(file_path, "patients_total.csv"), show_col_types = F), getrows)
 patients_waiting <- tail(vroom::vroom(paste0(file_path, "patients_waiting.csv"), show_col_types = F), getrows)
+# get last entry of wait times
+wait_hours <- tail(vroom::vroom(paste0(file_path, "wait_hours.csv"), col_names = F, show_col_types = F), 1)
+wait_hours_stretcher <- tail(vroom::vroom(paste0(file_path, "wait_hours_stretcher.csv"), col_names = F, show_col_types = F), 1)
 
-# add column names
-colnames(occupancy) <- col_names
-colnames(patients_total) <- col_names
-colnames(patients_waiting) <- col_names
+# function that adds column names and converts Date column
+convert_data <- function(data) {
+  # add column names
+  colnames(data) <- col_names
+  # convert data
+  data <- as.data.frame(data)
+  data$Date <- as.POSIXct(data$Date, format = "%Y-%m-%dT%H:%M")
+  return(data)
+}
 
-# convert data
-occupancy <- as.data.frame(occupancy)
-occupancy$Date <- as.POSIXct(occupancy$Date, format = "%Y-%m-%dT%H:%M")
+occupancy <- convert_data(occupancy)
+patients_total <- convert_data(patients_total)
+patients_waiting <- convert_data(patients_waiting)
+wait_hours <- convert_data(wait_hours)
+wait_hours_stretcher <- convert_data(wait_hours_stretcher)
 
-# convert data
-patients_total <- as.data.frame(patients_total)
-patients_total$Date <- as.POSIXct(patients_total$Date, format = "%Y-%m-%dT%H:%M")
-
-# convert data
-patients_waiting <- as.data.frame(patients_waiting)
-patients_waiting$Date <- as.POSIXct(patients_waiting$Date, format = "%Y-%m-%dT%H:%M")
 
 # get names
-hospitals <- col_names[2:22]
-
+hospitals <- col_names[2:22] # names(occupancy[2:22])
 
 # get max
 occupancy_max_value <- max(occupancy[,2:22], na.rm=T)
 patients_total_max_value <- max(patients_total[,2:22], na.rm=T)
 
-# get the most recent occupancy rate
-most_recent_time <- max(occupancy$Date, na.rm = TRUE)
-current_occupancy <- occupancy %>%
-  filter(Date == most_recent_time) %>%
-  tidyr::gather(key = "Hospital", value = "OccupancyRate", -Date) %>%
-  group_by(Hospital) %>%
-  #summarize(max_rate = max(OccupancyRate, na.rm = TRUE)) %>%
-  summarize(max_rate = ifelse(all(is.na(OccupancyRate)), NA, max(OccupancyRate, na.rm = TRUE))) %>%
-  arrange(desc(max_rate))
+# get update time
+most_recent_time <- max(occupancy$Date, na.rm = T)
+
+# function get current occupancy rates, patients counts for all hospitals
+get_data <- function(data, column_name) {
+  data %>%
+    filter(Date == most_recent_time) %>%
+    select(-Date) %>%
+    tidyr::gather(key = "Hospital", value = !!sym(column_name)) 
+}
+
+current_occupancy <- get_data(occupancy, "OccupancyRate")
+current_patients_total <- get_data(patients_total, "PatientsTotal")
+current_patients_waiting <- get_data(patients_waiting, "PatientsWaiting")
+# current_wait_hours <- get_data(wait_hours, "WaitHours")
+
+
+# combine current data
+current_data <- current_occupancy %>% 
+  left_join(current_patients_total, by = c("Hospital")) %>%
+  left_join(current_patients_waiting, by = c("Hospital")) %>%
+  filter(Hospital != "Total Montréal") %>%
+  arrange(desc(OccupancyRate))
+
+
+colnames(current_data) <- c("Hospital", "Occupancy Rate (%)", "Patients Total", "Patients Waiting")
 
 
 
@@ -86,12 +105,12 @@ ui <- bootstrapPage(
             ),
 
             div(
-              class="px-0 text-start",
-              span(textOutput('selected_hospital_text'), class="pb-3 strong"),
+              class="alert alert-light text-start",
+              span(htmlOutput('selected_hospital_text'), class="pb-3 strong"),
               div(
-                paste0("This information is updated every hour. The last update was on ", 
-                       format(most_recent_time, "%a, %b %e, %Y at %l %p"),
-                       ". For a detailed chronological representation of patient numbers and occupancy rates over time, please see the charts below."),
+                paste0("The last update was on ", 
+                       format(most_recent_time, "%a, %b %e, %Y, %l:%M %p"),
+                       ". This information is updated every hour. For a detailed chronological representation of patient numbers and occupancy rates over time, please see the charts below."),
                   class="py-3")
                 ),
             
@@ -175,16 +194,14 @@ ui <- bootstrapPage(
           
           div(
             class = "card-header bg-secondary",
-            h5("Compare Emergency room status", class = "card-title")
+            h5("Compare Emergency room status on", format(most_recent_time, "%a, %b %e, %Y, %l:%M %p"), class = "card-title")
           ),
           
           div(
-            class = "card-body",
+            class = "card-body px-0",
             div(
-              h5("Current Occupancy Rates", class = "text-start py-2")
-            ),
-            div(
-              tableOutput('table_occupancy')
+              class="table table-hover",
+              tableOutput('table_data')
             )
           ),
           
@@ -217,18 +234,24 @@ server <- function(input, output, session) {
   selected_hospital <- reactiveVal(hospitals[1])
   # get current values for selected hospital and render text
   output$selected_hospital_text <- renderText({
-    current_occupancy <- tail(occupancy[[selected_hospital()]], 1)
-    current_patients_waiting <- tail(patients_waiting[[selected_hospital()]], 1)
-    current_patients_total <- tail(patients_total[[selected_hospital()]], 1)
-    
+    current_occupancy <- current_data[which(current_data$Hospital == selected_hospital()), "Occupancy Rate (%)"]
+    current_patients_waiting <- current_data[which(current_data$Hospital == selected_hospital()), "Patients Waiting"]
+    current_patients_total <- current_data[which(current_data$Hospital == selected_hospital()), "Patients Total"]
+    current_wait_hours <- wait_hours[[selected_hospital()]]
+    current_wait_hours_stretcher <- wait_hours_stretcher[[selected_hospital()]]
+
     # Check for NAs and show different text if any of them is.na
     if (any(is.na(c(current_occupancy, current_patients_waiting, current_patients_total)))) {
       "The data for the selected hospital is currently not available. Please check back later."
     } else {
-      paste0(selected_hospital(), ": ",
-             "There are currently ", current_patients_total, " patients in the ER, with ",
-             current_patients_waiting, " of these patients waiting to be seen by a health professional. ",
-             "The current occupancy rate is ", current_occupancy, "%.")
+      paste(
+        "Emergency Room Status for ", selected_hospital(), ":",
+        "<br>&#128101; Current Patient Count: ", "<strong>", current_patients_total, "</strong>",
+        "<br>&#8987; Waiting to be Seen: ", "<strong>", current_patients_waiting, "</strong>",
+        "<br>&#128200; Occupancy Rate: ", "<strong>", current_occupancy, "%", "</strong>",
+        "<br>&#9201; Average Stay: ", "<strong>", current_wait_hours, " hours" , "</strong>", " (previous day)",
+        "<br>&#128719; Average Stay on stretcher: ", "<strong>", current_wait_hours_stretcher, " hours" , "</strong>", " (previous day)",
+        "<br><small>Please note that the Average Stay includes patients who left the ER before seeing a health professional.")
     }
   })
   
@@ -284,8 +307,10 @@ server <- function(input, output, session) {
       scale_color_manual(values = c("Total" = "blue", "Waiting" = "red"), name = "Dataset")
   }, res = 96)
   
-  output$table_occupancy <- renderTable(current_occupancy)
+  output$table_data <- renderTable(current_data, digits = 0, spacing = "xs", hover=TRUE)
   
 }
 
 shinyApp(ui, server)
+
+
