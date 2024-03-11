@@ -7,6 +7,7 @@ library(shiny)
 # get data - start with max
 days <- 30
 getrows <- 24*days
+
 col_names <- c("Date", "Centre Hospitalier de l'Université de Montréal", "Centre Hospitalier de St. Mary", "CHU Sainte-Justine", "Hôpital de Lachine", "Hôpital de Lasalle",  "Hôpital de Verdun", "Hôpital Douglas", "Hôpital Maisonneuve-Rosemont", "Hôpital du Sacré-Cœur de Montréal", "Hôpital en Santé Mentale Albert-Prévost", "Hôpital Fleury", "Hôpital Général de Montréal", "Hôpital Général du Lakeshore", "Hôpital Général Juif", "Hôpital Jean-Talon", "Hôpital Notre-Dame", "Hôpital Royal Victoria", "Hôpital Santa Cabrini", "Institut de Cardiologie de Montréal", "Institut Universitaire en Santé Mentale de Montréal", "Hôpital de Montréal pour Enfants", "Total Montréal")
 file_path <- "https://github.com/jlomako/hospital-occupancy-tracker/raw/main/tables/"
 
@@ -16,6 +17,8 @@ patients_waiting <- tail(vroom::vroom(paste0(file_path, "patients_waiting.csv"),
 # get last entry of wait times
 wait_hours <- tail(vroom::vroom(paste0(file_path, "wait_hours.csv"), col_names = F, show_col_types = F), 1)
 wait_hours_stretcher <- tail(vroom::vroom(paste0(file_path, "wait_hours_stretcher.csv"), col_names = F, show_col_types = F), 1)
+
+
 
 # function that adds column names and converts Date column
 convert_data <- function(data) {
@@ -35,7 +38,7 @@ wait_hours_stretcher <- convert_data(wait_hours_stretcher)
 
 
 # get names
-hospitals <- col_names[2:22] # names(occupancy[2:22])
+hospitals <- col_names[2:22]
 
 # get max
 occupancy_max_value <- max(occupancy[,2:22], na.rm=T)
@@ -89,14 +92,14 @@ ui <- bootstrapPage(
         class = "col-md-12 py-2",
         
         div(
-          class = "card h-100 text-center",
+          class = "card",
           
           div(
-            class = "card-header bg-primary",
-            h5("Select a hospital to see current status:", class = "card-title")
+            class = "card-header bg-primary text-center",
+            h5("Select a hospital to see current status:")
           ),
           
-          div(class="card-body py-2",
+          div(class="card-body py-2 text-center",
             selectInput(
               inputId = "hospital",
               label = NULL,
@@ -105,7 +108,7 @@ ui <- bootstrapPage(
             ),
 
             div(
-              class="alert alert-light text-start",
+              class="text-start",
               span(htmlOutput('selected_hospital_text'), class="pb-3 strong"),
               div(
                 paste0("The last update was on ", 
@@ -113,19 +116,18 @@ ui <- bootstrapPage(
                        ". This information is updated every hour. For a detailed chronological representation of patient numbers and occupancy rates over time, please see the charts below."),
                   class="py-3")
                 ),
-            
+          ),# end card body
+
+          div(
+            class="card-text p-2 pt-3 border-top border-bottom bg-secondary text-center",
+              h5(textOutput('current_hospital'))
+              ),
+              
             div(
-              h5(textOutput('current_hospital'), class = "py-2 border-top")
-            ),
+              class="card-text py-2 text-end",
             
-            div(
-              class = "clearfix",
                 div(
-                  class = "float-start text-start",
-                    div(h5("Hourly Occupancy Rate", class = "text-start pt-0 pb-2")),
-                ),
-                div(
-                  class="float-end text-end pb-0",
+                  class="pe-2",
                     actionButton(
                       inputId = "decrease_days",
                       label = NULL,
@@ -143,42 +145,52 @@ ui <- bootstrapPage(
                       class = "button btn btn-primary btn-sm"
                     ),
                  ), # end buttons
-             ), # end clearfix
-            
-            div(
-              plotOutput('plot_occupancy')
-            ),
-            
+
+
+                tabsetPanel(type = "tabs",
+                        tabPanel("Occupancy Rate",
+                                 
+                                 div(
+                                   h5("Hourly Occupancy Rate", class = "text-start p-2")
+                                   # plotOutput("plot_occupancy")
+                                   ),
+                                 
+                                 div(
+                                   class="pe-2",
+                                   plotOutput("plot_occupancy")
+                                 ),
+                                 
+                                 div(class="card-footer text-start", 
+                                     h5("Occupancy Rate: The occupancy rate refers to the percentage of stretchers that are occupied by patients. An occupancy rate of over 100% indicates that the emergency room is over capacity, typically meaning that there are more patients than there are stretchers.", class="small"),
+                                 ),
+                                 ), # tabpanel end
+                        
+                        tabPanel("Patient Counts", 
+                                 div(
+                                   class = "clearfix",
+                                   h5("Hourly Patient Counts", class = "text-start float-start p-2"), 
+                                   div(
+                                    class = "small float-end pe-2",
+                                     span("Patients Total", style = "color: #121eff;"), 
+                                     span(" - "), 
+                                     span("Patients Waiting", style = "color: #ff0000;")
+                                      )
+                                   ),
+                                 
+                                 div(
+                                   class="pe-2",
+                                   plotOutput("plot_patients")
+                                   ),
+                                 
+                                 div(class="card-footer text-start", 
+                                     h5("Patients Waiting: The number of patients in the emergency room who are waiting to be seen by a physician.", class="small "),
+                                     h5("Patients Total: The total number of patients in the emergency room, including those who are currently waiting to be seen by a physician.", class="small")
+                                 )
+                                 
+                      ) # tabpanel end
+                  ), # tabsetpanel end
+
           ),  # card body end
-            
-            div(class="card-footer text-start border-bottom", 
-                h5("Occupancy Rate: The occupancy rate refers to the percentage of stretchers that are occupied by patients. An occupancy rate of over 100% indicates that the emergency room is over capacity, typically meaning that there are more patients than there are stretchers.", class="small"),
-            ),
-            
-
-          div(
-            class = "card-body",
-
-            div(
-              class = "clearfix",
-              h5("Hourly Patient Counts", class = "text-start float-start"), 
-              div(
-                class = "small float-end",
-                span("Patients Total", style = "color: #121eff;"), 
-                span(" - "), 
-                span("Patients waiting", style = "color: #ff0000;")
-              )
-            ),
-
-            div(
-              plotOutput('plot_patients')
-            ),
-          ),  # card body end
-
-          div(class="card-footer text-start", 
-              h5("Patients Waiting: The number of patients in the emergency room who are waiting to be seen by a physician.", class="small "),
-              h5("Patients Total: The total number of patients in the emergency room, including those who are currently waiting to be seen by a physician.", class="small")
-          )
         )  # card end
       )  # col end
     ),  # row end
@@ -193,12 +205,12 @@ ui <- bootstrapPage(
           class = "card h-100 text-start",
           
           div(
-            class = "card-header bg-secondary",
-            h5("Compare Emergency room status on", format(most_recent_time, "%a, %b %e, %Y, %l:%M %p"), class = "card-title")
+            class = "card-header text-center bg-primary p-2",
+            h5("Compare Emergency room status on", format(most_recent_time, "%a, %b %e, %Y, %l:%M %p"))
           ),
           
           div(
-            class = "card-body px-0",
+            class = "card-text",
             div(
               class="table table-hover",
               tableOutput('table_data')
@@ -245,13 +257,26 @@ server <- function(input, output, session) {
       "The data for the selected hospital is currently not available. Please check back later."
     } else {
       paste(
-        "Emergency Room Status for ", selected_hospital(), ":",
-        "<br>&#128101; Current Patient Count: ", "<strong>", current_patients_total, "</strong>",
-        "<br>&#8987; Waiting to be Seen: ", "<strong>", current_patients_waiting, "</strong>",
-        "<br>&#128200; Occupancy Rate: ", "<strong>", current_occupancy, "%", "</strong>",
-        "<br>&#9201; Average Stay: ", "<strong>", current_wait_hours, " hours" , "</strong>", " (previous day)",
-        "<br>&#128719; Average Stay on stretcher: ", "<strong>", current_wait_hours_stretcher, " hours" , "</strong>", " (previous day)",
-        "<br><small>Please note that the Average Stay includes patients who left the ER before seeing a health professional.")
+ #        "Emergency Room Status for ", selected_hospital(), ":",
+ #        "<br>&#128101; Current Patient Count: ", "<strong>", current_patients_total, "</strong>",
+ #        "<br>&#8987; Waiting to be Seen: ", "<strong>", current_patients_waiting, "</strong>",
+ #        "<br>&#128200; Occupancy Rate: ", "<strong>", current_occupancy, "%", "</strong>",
+ # #      "<br>&#9201; Average Stay: ", "<strong>", current_wait_hours, " hours" , "</strong>", " (previous day)",
+ #        "<br>&#128719; Average Stay on stretcher: ", "<strong>", current_wait_hours_stretcher, " hours" , "</strong>", " (previous day)"
+ # #      "<br><small>Please note that the Average Stay includes patients who left the ER before seeing a health professional."
+        '<div class="text-center p-2">Emergency Room Status for ', selected_hospital(), ':</div>',
+        '<div class="row text-center row-cols-1">',
+        '<div class="col-sm-4 alert alert-info">',
+        "Current Patient Count: ", '<br><strong>', current_patients_total, "</strong>",
+        "</div>",
+        '<div class="col-sm-4 alert alert-info">',
+        "Waiting to be Seen: ", "<br><strong>", current_patients_waiting, "</strong>",
+        '</div>',
+        '<div class="col-sm-4 alert alert-info">',
+        "Occupancy Rate: ", "<br><strong>", current_occupancy, "%", "</strong>",
+        '</div></div>',
+        "Average Stay on stretcher: ", "<strong>", current_wait_hours_stretcher, " hours" , "</strong>", " (previous day)"
+        )
     }
   })
   
@@ -307,10 +332,9 @@ server <- function(input, output, session) {
       scale_color_manual(values = c("Total" = "blue", "Waiting" = "red"), name = "Dataset")
   }, res = 96)
   
-  output$table_data <- renderTable(current_data, digits = 0, spacing = "xs", hover=TRUE)
+  output$table_data <- renderTable(current_data, digits = 0) # spacing = "xs", hover=F
   
 }
 
 shinyApp(ui, server)
-
 
