@@ -268,46 +268,46 @@ ui <- bootstrapPage(
 
 server <- function(input, output, session) {
   
-  # text for selected hospital
+  # first selected hospital
   selected_hospital <- reactiveVal(hospitals[1])
   
-
-  # get current values for selected hospital and render text
-  output$selected_hospital_text <- renderText({
-    current_occupancy <- current_data[which(current_data$Hospital == selected_hospital()), "Occupancy Rate (%)"]
-    current_patients_waiting <- current_data[which(current_data$Hospital == selected_hospital()), "Patients Waiting"]
-    current_patients_total <- current_data[which(current_data$Hospital == selected_hospital()), "Patients Total"]
-    # current_wait_hours <- wait_hours[[selected_hospital()]]
-    current_wait_hours_stretcher <- wait_hours_stretcher[[selected_hospital()]]
-
-    # Check for NAs and show different text if any of them is.na
-    if (any(is.na(c(current_occupancy, current_patients_waiting, current_patients_total)))) {
-      '<div class="container h-100 bg-light px-1 py-3">
+  # observe selected hospital
+  observeEvent(selected_hospital(input$hospital), {
+    # render name of selected hospital
+    output$current_hospital <- renderText({ selected_hospital() })
+    
+    # get current values for selected hospital and render text for selected hospital
+    output$selected_hospital_text <- renderText({
+      current_occupancy <- current_data[which(current_data$Hospital == selected_hospital()), "Occupancy Rate (%)"]
+      current_patients_waiting <- current_data[which(current_data$Hospital == selected_hospital()), "Patients Waiting"]
+      current_patients_total <- current_data[which(current_data$Hospital == selected_hospital()), "Patients Total"]
+      # current_wait_hours <- wait_hours[[selected_hospital()]]
+      current_wait_hours_stretcher <- wait_hours_stretcher[[selected_hospital()]]
+      
+      # Check for NAs and show different text if any of them is.na
+      if (any(is.na(c(current_occupancy, current_patients_waiting, current_patients_total)))) {
+        '<div class="container h-100 bg-light px-1 py-3">
       The data for the selected hospital is currently not available. Please check back later.
       </div>'
-    } else {
-      paste(
-        '<div class="text-center p-2">Emergency Room Status for ', selected_hospital(), ':</div>',
-        '<div class="row text-center row-cols-1 py-3 row-gap-3">',
-        '<div class="col-md-4"><div class="container h-100 bg-light py-2">',
-        "Occupancy Rate: ", "<br><strong>", current_occupancy, "%", "</strong>",
-        "</div></div>",        
-        '<div class="col-md-4"><div class="container h-100 bg-light py-2">',
-        "Current Patient Count: ", '<br><strong>', current_patients_total, "</strong>",
-        "</div></div>",
-        '<div class="col-md-4"><div class="container h-100 bg-light py-2">',
-        "Waiting to be Seen: ", "<br><strong>", current_patients_waiting, "</strong>",
-        '</div></div></div>',
-        "Average Stay on stretcher: ", "<strong>", current_wait_hours_stretcher, " hours" , "</strong>", " (previous day)"
+      } else {
+        paste(
+          '<div class="text-center p-2">Emergency Room Status for ', selected_hospital(), ':</div>',
+          '<div class="row text-center row-cols-1 py-3 row-gap-3">',
+          '<div class="col-md-4"><div class="container h-100 bg-light py-2">',
+          "Occupancy Rate: ", "<br><strong>", current_occupancy, "%", "</strong>",
+          "</div></div>",        
+          '<div class="col-md-4"><div class="container h-100 bg-light py-2">',
+          "Current Patient Count: ", '<br><strong>', current_patients_total, "</strong>",
+          "</div></div>",
+          '<div class="col-md-4"><div class="container h-100 bg-light py-2">',
+          "Waiting to be Seen: ", "<br><strong>", current_patients_waiting, "</strong>",
+          '</div></div></div>',
+          "Average Stay on stretcher: ", "<strong>", current_wait_hours_stretcher, " hours" , "</strong>", " (previous day)"
         )
-    }
+      }
+    })
+    
   })
-  
-  # name of selected hospital
-  output$current_hospital <- renderText({ selected_hospital() })
-  
-  # observe selected hospital
-  observe({ selected_hospital(input$hospital) })
   
   # number of days
   selected_days <- reactiveVal(7)
@@ -372,7 +372,7 @@ server <- function(input, output, session) {
 
   
   # table with current data
-  output$table_data <- renderTable(current_data, digits = 0) # spacing = "xs", hover=F
+  output$table_data <- renderTable(current_data, spacing = "xs", digits = 0) # spacing = "xs", hover=F
   
 }
 
