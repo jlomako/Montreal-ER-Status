@@ -2,6 +2,8 @@ library(dplyr)
 library(ggplot2)
 library(shiny)
 
+
+
 # Notes:
 # occupancy <- tail(vroom::vroom(paste0(file_path, "occupancy.csv"), show_col_types = F, col_names = F), getrows) => error when col_names = F
 # excluded wait hours in ER waiting area (DMS_ambulatoire) due to doubts about the measurement method
@@ -74,10 +76,23 @@ current_data <- current_occupancy %>%
 colnames(current_data) <- c("Hospital", "Occupancy Rate (%)", "Patients Total", "Patients Waiting")
 
 
+# set colors:
+primary_color = "#004950"
+secondary_color = "#198c7e"
+warning_color = "#f8c037"
+light_color = "#e4e6e9"
+
+
 ui <- bootstrapPage(
   
   # uses bootstrap 5
-  theme = bslib::bs_theme(version = 5, bootswatch = "spacelab"),
+  theme = bslib::bs_theme(
+    version = 5, 
+    bootswatch = "sandstone",
+    primary = primary_color,
+    secondary = secondary_color,
+    warning = warning_color,
+    light = light_color),
   
   tags$head(
     HTML("<title>Montréal Emergency Room Status</title>"),
@@ -87,7 +102,7 @@ ui <- bootstrapPage(
     tags$style(
       HTML('
        .has-items {
-         border-color: #446e9b !important;
+         border-color: #004950 !important; # #446e9b
         }
        .spacing-s, .table- {
   #      font-size: 13px;
@@ -101,7 +116,7 @@ ui <- bootstrapPage(
   
   
   div(
-    class = "container px-0",
+    class = "container-md px-0",
     
     h1("Montréal Emergency Room Status", class = "text-center pt-5"),
     
@@ -121,24 +136,25 @@ ui <- bootstrapPage(
           
           div(class="card-body py-2 text-center",
               
-    #        div(class="container-fluid bg-secondary",
-                selectInput(
-                  inputId = "hospital",
-                  label = NULL,
-                  choices = hospitals,
-                  width = "100%"
-                ),
-     #       ),
-
-            div(
-              class="text-start",
-              span(htmlOutput('selected_hospital_text'), class="pb-3 strong"),
+              selectInput(
+                inputId = "hospital",
+                label = NULL,
+                choices = hospitals,
+                width = "100%"
+              ),
+              
               div(
+                class="text-start",
+                span(htmlOutput('selected_hospital_text'), class="pb-3 strong")
+              ),
+              
+              div(
+                class="text-start",
                 paste0("This information is updated every hour. The last update was on ", 
                        format(most_recent_time, "%a, %b %e, %Y, %l:%M %p"),
                        ". For a detailed chronological representation of patient numbers and occupancy rates over time, please see the charts below."),
-                  class="py-3")
-                ),
+                class="py-3"),
+              
           ),# end card body
 
           div(
@@ -174,7 +190,7 @@ ui <- bootstrapPage(
                         tabPanel(value = "tab1", "Occupancy Rate",
                                  
                                  div(
-                                   h5("Hourly Occupancy Rate", class = "text-start p-2")
+                                   h5("Hourly Occupancy Rate (%)", class = "text-start p-2")
                                    # plotOutput("plot_occupancy")
                                    ),
                                  
@@ -191,12 +207,13 @@ ui <- bootstrapPage(
                         tabPanel(value = "tab2", "Patient Counts", 
                                  div(
                                    class = "clearfix",
-                                   h5("Hourly Patient Counts", class = "text-start float-start p-2"), 
+                                   h5("Hourly Number of Patients", class = "text-start float-start p-2"), 
                                    div(
                                     class = "small float-end pe-2",
-                                     span("Patients Total", style = "color: #121eff;"), 
-                                     span(" - "), 
-                                     span("Patients Waiting", style = "color: #ff0000;")
+                                     br(), 
+                                     span("Patients Total", style = "color: #004950;"), 
+                                     br(), 
+                                     span("Patients Waiting", style = "color: #f8c037;")
                                       )
                                    ),
                                  
@@ -271,6 +288,7 @@ server <- function(input, output, session) {
   # first selected hospital
   selected_hospital <- reactiveVal(hospitals[1])
   
+
   # observe selected hospital
   observeEvent(selected_hospital(input$hospital), {
     # render name of selected hospital
@@ -286,20 +304,20 @@ server <- function(input, output, session) {
       
       # Check for NAs and show different text if any of them is.na
       if (any(is.na(c(current_occupancy, current_patients_waiting, current_patients_total)))) {
-        '<div class="container h-100 bg-light px-1 py-3">
+        '<div class="container h-100 bg-warning px-1 py-3">
       The data for the selected hospital is currently not available. Please check back later.
       </div>'
       } else {
-        paste(
+        paste0(
           '<div class="text-center p-2">Emergency Room Status for ', selected_hospital(), ':</div>',
           '<div class="row text-center row-cols-1 py-3 row-gap-3">',
-          '<div class="col-md-4"><div class="container h-100 bg-light py-2">',
+          '<div class="col-md-4"><div class="container h-100 bg-warning py-2">',
           "Occupancy Rate: ", "<br><strong>", current_occupancy, "%", "</strong>",
           "</div></div>",        
-          '<div class="col-md-4"><div class="container h-100 bg-light py-2">',
+          '<div class="col-md-4"><div class="container h-100 bg-warning py-2">',
           "Current Patient Count: ", '<br><strong>', current_patients_total, "</strong>",
           "</div></div>",
-          '<div class="col-md-4"><div class="container h-100 bg-light py-2">',
+          '<div class="col-md-4"><div class="container h-100 bg-warning py-2">',
           "Waiting to be Seen: ", "<br><strong>", current_patients_waiting, "</strong>",
           '</div></div></div>',
           "Average Stay on stretcher: ", "<strong>", current_wait_hours_stretcher, " hours" , "</strong>", " (previous day)"
@@ -364,7 +382,7 @@ server <- function(input, output, session) {
           scale_y_continuous(expand = c(0, 0), limits = c(0, patients_total_max_value)) +
           theme_minimal() +
           theme(axis.text.x = element_text(angle = 90, hjust = 0.5, vjust = 0.5)) +
-          scale_color_manual(values = c("Total" = "blue", "Waiting" = "red"), name = "Dataset")
+          scale_color_manual(values = c("Total" = primary_color, "Waiting" = warning_color), name = "Dataset")
       }, res = 96)      
       
   }) # end tab2  
