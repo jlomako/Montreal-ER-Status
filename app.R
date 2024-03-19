@@ -2,7 +2,8 @@ library(dplyr)
 library(ggplot2)
 library(shiny)
 
-
+# suppress messages
+options(dplyr.summarise.inform = FALSE)
 
 # Notes:
 # occupancy <- tail(vroom::vroom(paste0(file_path, "occupancy.csv"), show_col_types = F, col_names = F), getrows) => error when col_names = F
@@ -50,6 +51,7 @@ patients_total_max_value <- max(patients_total[,2:22], na.rm=T)
 
 # get update time
 most_recent_time <- max(occupancy$Date, na.rm = T)
+most_recent_hour <- as.POSIXct(paste("2000-01-01", format(most_recent_time, "%H:00:00")))
 
 # function get current occupancy rates, patients counts for all hospitals
 get_data <- function(data, column_name) {
@@ -74,6 +76,19 @@ current_data <- current_occupancy %>%
 
 # rename cols for table
 colnames(current_data) <- c("Hospital", "Occupancy Rate (%)", "Patients Total", "Patients Waiting")
+
+
+
+# calculate median occupancy
+occupancy_median <- occupancy %>%
+   mutate(hour = lubridate::hour(Date)) %>%
+   mutate(day_number = as.POSIXlt(Date)$wday+1) %>% # Sun = 1, Mon = 2 etc
+   tidyr::gather(key = "Hospital", value = "Occupancy", -c(Date, hour, day_number)) %>%
+#  group_by(Hospital, day_number, hour) %>% # group_by(Hospital, hour) # median for each hospital + day + hour
+   group_by(Hospital, hour) %>% # median for each hospital and hour
+   summarize(median_occupancy = round(median(Occupancy, na.rm = T)))
+
+
 
 
 # set colors:
@@ -102,13 +117,24 @@ ui <- bootstrapPage(
     tags$style(
       HTML('
        .has-items {
-         border-color: #004950 !important; # #446e9b
-        }
+         border-color: #004950 !important; # 446e9b 
+       }
        .spacing-s, .table- {
-  #      font-size: 13px;
-  #      line-height: 13px;
          table-layout: fixed;
          width: 100% !important;
+       }
+       .table.table- > thead > tr > th,
+       .table.table- > tbody > tr > td,
+       .table.table- > tfoot > tr > td {
+         padding-left: 0 !important;
+         padding-right: 0 !important;
+       }
+       .table- th:first-child,
+       .table- td:first-child {
+         width: 30%; 
+       }
+       h5 > .shiny-plot-output {
+         height: 80px !important;
        }'
       )
     ),
@@ -161,6 +187,15 @@ ui <- bootstrapPage(
             class="card-text p-2 pt-3 border-top border-bottom bg-secondary text-center",
               h5(textOutput('current_hospital'))
               ),
+          
+          # AVERAGE OCCUPANCY MINI PLOT
+          div(
+             class="p-2 small",
+             span("24-Hour Average Occupancy", class="text-start ps-2"),
+             br(),
+             h5(plotOutput("plot_median_occupancy"), class="text-center"),
+            ),
+          hr(),
               
             div(
               class="card-text py-2 text-end",
@@ -202,7 +237,7 @@ ui <- bootstrapPage(
                                  div(class="card-footer text-start", 
                                      h5("Occupancy Rate: The occupancy rate refers to the percentage of stretchers that are occupied by patients. An occupancy rate of over 100% indicates that the emergency room is over capacity, typically meaning that there are more patients than there are stretchers.", class="small"),
                                  ),
-                                 ), # tabpanel end
+                        ), # tabpanel1 end
                         
                         tabPanel(value = "tab2", "Patient Counts", 
                                  div(
@@ -225,9 +260,8 @@ ui <- bootstrapPage(
                                  div(class="card-footer text-start", 
                                      h5("Patients Waiting: The number of patients in the emergency room who are waiting to be seen by a physician.", class="small "),
                                      h5("Patients Total: The total number of patients in the emergency room, including those who are currently waiting to be seen by a physician.", class="small")
-                                 )
-                                 
-                      ) # tabpanel end
+                                 ),
+                        ), # tabpanel2 end
                   ), # tabsetpanel end
 
           ),  # card body end
@@ -262,7 +296,7 @@ ui <- bootstrapPage(
           div(class="card-footer", 
           h5('This website is for informational purposes only. If you are in need of urgent medical treatment, visit your nearest ER or call 9-1-1.
               In case of a non-urgent health issue call 8-1-1',
-             tags$a(href="https://www.quebec.ca/en/health/finding-a-resource/info-sante-811/", "(Info Santé)"),
+             tags$a(href="https://www.quebec.ca/en/health/finding-a-resource/info-sante-811/", "(Info Santé)", class="text-primary"),
              class="small")),
         ) # card end
       )  # col end 
@@ -272,7 +306,7 @@ ui <- bootstrapPage(
     div(class="row",
         div(class="col-sm-12 text-center py-3",
             div(HTML("Data source: Ministère de la Santé et des Services sociaux du Québec<br>© Copyright 2022-2024,"),
-                tags$a(href="https://github.com/jlomako", "jlomako")
+                tags$a(href="https://github.com/jlomako", "jlomako", class="text-primary")
             ),
         ),
     ),
@@ -326,7 +360,38 @@ server <- function(input, output, session) {
     })
     
   })
+
   
+  
+  # plot for median occupancy
+  output$plot_median_occupancy <- renderPlot({ 
+    # get value from 2nd col (occupancy)
+    selected_occupancy <- current_data[which(current_data$Hospital == input$hospital), 2] 
+    
+    if (is.na(selected_occupancy)) {
+      p <- NULL
+    } else {
+      p <- geom_col(aes(x = most_recent_hour, y = selected_occupancy), # colour = "#004950", 
+                    fill = "#004950", alpha = 0.4, width=2800, position = "identity", show.legend = F)
+    }
+    
+    occupancy_median %>%
+      mutate(hour = as.POSIXct(sprintf("2000-01-01 %02d:00:00", hour))) %>% # dummy date
+      filter(Hospital == input$hospital) %>%
+        ggplot(aes(x = hour, y = median_occupancy)) +
+          geom_col(fill="#004950", alpha = 0.2, position = "identity", show.legend=F, na.rm=T) +
+          geom_hline(yintercept=100, linetype="dashed", color = "#004950") +
+          scale_x_datetime(expand = c(0,0)) +
+          p +
+          theme_void() # remove everything around the plot
+    
+  }, res = 96, height=80)
+  
+  
+  
+  
+  
+    
   # number of days
   selected_days <- reactiveVal(7)
   
@@ -356,11 +421,11 @@ server <- function(input, output, session) {
         ggplot(selected_occupancy, aes(x = Date, y = !!sym(input$hospital))) +
           geom_line(linewidth = 0.5, show.legend = F, na.rm = T) +
           labs(x = NULL, y = NULL, title = NULL) +
-          scale_x_datetime(expand = c(0,0), date_labels = "%a, %b %e, %l%p", date_breaks = "1 day") +
+          scale_x_datetime(expand = c(0,0), date_labels = "%a\n%b %e\n%l%p", date_breaks = "1 day") +
           scale_y_continuous(expand = c(0,0), limits = c(0,occupancy_max_value), labels = scales::percent_format(scale = 1)) +
           theme_minimal() +
-          geom_hline(yintercept = 100, linetype="dashed", col = "red") +
-          theme(axis.text.x = element_text(angle=90, hjust=0.5, vjust=0.5))
+          geom_hline(yintercept = 100, linetype="dashed", col = "red")
+         # + theme(axis.text.x = element_text(angle=90, hjust=0.5, vjust=0.5))
       }, res = 96)
       
   }) # end tab1 
@@ -378,15 +443,14 @@ server <- function(input, output, session) {
           geom_line(data = selected_patients_total, aes(x = Date, y = !!sym(input$hospital), color = "Total"), linewidth = 0.5, show.legend = F, na.rm = T) +
           geom_line(data = selected_patients_waiting, aes(x = Date, y = !!sym(input$hospital), color = "Waiting"), linewidth = 0.5, show.legend = F, na.rm = T) +
           labs(x = NULL, y = NULL, title = NULL) +
-          scale_x_datetime(expand = c(0, 0), date_labels = "%a, %b %e, %l%p", date_breaks = "1 day") +
+          scale_x_datetime(expand = c(0,0), date_labels = "%a\n%b %e\n%l%p", date_breaks = "1 day") +
           scale_y_continuous(expand = c(0, 0), limits = c(0, patients_total_max_value)) +
           theme_minimal() +
-          theme(axis.text.x = element_text(angle = 90, hjust = 0.5, vjust = 0.5)) +
+          # theme(axis.text.x = element_text(angle = 90, hjust = 0.5, vjust = 0.5)) +
           scale_color_manual(values = c("Total" = primary_color, "Waiting" = warning_color), name = "Dataset")
       }, res = 96)      
       
   }) # end tab2  
-    
 
   
   # table with current data
