@@ -325,8 +325,10 @@ server <- function(input, output, session) {
 
   # observe selected hospital
   observeEvent(selected_hospital(input$hospital), {
+    
     # render name of selected hospital
     output$current_hospital <- renderText({ selected_hospital() })
+    
     
     # get current values for selected hospital and render text for selected hospital
     output$selected_hospital_text <- renderText({
@@ -359,37 +361,34 @@ server <- function(input, output, session) {
       }
     })
     
-  })
-
-  
-  
-  # plot for median occupancy
-  output$plot_median_occupancy <- renderPlot({ 
-    # get value from 2nd col (occupancy)
-    selected_occupancy <- current_data[which(current_data$Hospital == input$hospital), 2] 
     
-    if (is.na(selected_occupancy)) {
-      p <- NULL
-    } else {
-      p <- geom_col(aes(x = most_recent_hour, y = selected_occupancy), # colour = "#004950", 
-                    fill = "#004950", alpha = 0.4, width=2800, position = "identity", show.legend = F)
-    }
-    
-    occupancy_median %>%
-      mutate(hour = as.POSIXct(sprintf("2000-01-01 %02d:00:00", hour))) %>% # dummy date
-      filter(Hospital == input$hospital) %>%
+    # plot for median occupancy
+    output$plot_median_occupancy <- renderPlot({ 
+      # get value from 2nd col (occupancy)
+      selected_occupancy <- current_data[which(current_data$Hospital == input$hospital), 2] 
+      
+      if (is.na(selected_occupancy)) {
+        p <- NULL
+      } else {
+        p <- geom_col(aes(x = most_recent_hour, y = selected_occupancy), # colour = "#004950", 
+                      fill = "#004950", alpha = 0.4, width=2800, position = "identity", show.legend = F)
+      }
+      
+      occupancy_median %>%
+        mutate(hour = as.POSIXct(sprintf("2000-01-01 %02d:00:00", hour))) %>% # dummy date
+        filter(Hospital == input$hospital) %>%
         ggplot(aes(x = hour, y = median_occupancy)) +
-          geom_col(fill="#004950", alpha = 0.2, position = "identity", show.legend=F, na.rm=T) +
-          geom_hline(yintercept=100, linetype="dashed", color = "#004950") +
-          scale_x_datetime(expand = c(0,0)) +
-          p +
-          theme_void() # remove everything around the plot
+        geom_col(fill="#004950", alpha = 0.2, position = "identity", show.legend=F, na.rm=T) +
+        geom_hline(yintercept=100, linetype="dashed", color = "#004950") +
+        scale_x_datetime(expand = c(0,0)) +
+        p +
+        theme_void() # remove everything around the plot
+      
+    }, res = 96, height=80)
     
-  }, res = 96, height=80)
-  
-  
-  
-  
+    
+    
+  })
   
     
   # number of days
