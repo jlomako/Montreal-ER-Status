@@ -89,6 +89,17 @@ occupancy_median <- occupancy %>%
    summarize(median_occupancy = round(median(Occupancy, na.rm = T)))
 
 
+# create df with hospital info
+hospital_info <- tibble(
+  hospital = hospitals,
+  link = c("https://www.chumontreal.qc.ca/", "https://www.smhc.qc.ca/fr/homepage", "https://www.chusj.org/fr/accueil", "https://cusm.ca/hopital-de-lachine", "https://www.ciusss-ouestmtl.gouv.qc.ca/en/facilities/general-and-specialized-care-hospitals/hopital-de-lasalle/", "https://ciusss-centresudmtl.gouv.qc.ca/etablissement/hopital-de-verdun", "https://www.ciusss-ouestmtl.gouv.qc.ca/installations/centre-hospitalier-de-soins-psychiatriques/institut-universitaire-en-sante-mentale-douglas/", "https://ciusss-estmtl.gouv.qc.ca/etablissement/hopital-maisonneuve-rosemont", "https://www.ciusssnordmtl.ca/installations/hopitaux/hopital-du-sacre-coeur-de-montreal/", "https://www.ciusssnordmtl.ca/installations/hopitaux/hopital-en-sante-mentale-albert-prevost/",   "https://www.ciusssnordmtl.ca/installations/hopitaux/hopital-fleury/", "https://cusm.ca/hopital-general-de-montreal", "https://www.ciusss-ouestmtl.gouv.qc.ca/installations/centres-hospitaliers-de-soins-generaux-et-specialises/hopital-general-du-lakeshore/", "https://www.jgh.ca/", "https://www.ciusssnordmtl.ca/installations/hopitaux/hopital-jean-talon/", "https://ciusss-centresudmtl.gouv.qc.ca/etablissement/hopital-notre-dame", "https://muhc.ca/glen-site", "https://ciusss-estmtl.gouv.qc.ca/etablissement/hopital-santa-cabrini-ospedale", "https://www.icm-mhi.org/fr/nous-joindre/nos-coordonnees", "https://ciusss-estmtl.gouv.qc.ca/etablissement/institut-universitaire-en-sante-mentale-de-montreal", "https://www.thechildren.com/"
+  ),
+  address = c("1000 Rue Saint-Denis, Montreal, QC H2X 0C1", "3830 Avenue Lacombe, Montreal, QC H3T 1M5", "3175 Chemin de la Côte-Sainte-Catherine, Montreal, QC H3T 1C5", "650 16e Ave, Lachine, QC H8S 3N5", "8585 Terr. Champlain, LaSalle, QC H8P 1C1", "4000 Boulevard LaSalle, Verdun, QC H4G 2A3", "6875 Boulevard LaSalle, Verdun, QC H4H 1R3", "5415 Boulevard de l'Assomption, Montreal, QC H1T 2M4", "5400 Boulevard Gouin Ouest, Montreal, QC H4J 1C5", "5400, Boulevard Gouin Ouest, Montréal, QC H4J 1C5", "2180 Rue Fleury Est, Montreal, QC H2B 1K3", "1650 Avenue Cedar, Montreal, QC H3G 1A4", "160 Avenue Stillview, Pointe-Claire, QC H9R 2Y2", "3755 Chemin de la Côte-Sainte-Catherine, Montreal, QC H3T 1E2", "1385 Rue Jean-Talon Est, Montreal, QC H2E 1S6", "1560 Rue Sherbrooke Est, Montreal, QC H2L 4M1", "1001 Boulevard Décarie, Montreal, QC H4A 3J1", "5655 Rue Saint-Zotique Est, Montreal, QC H1T 1P7", "5000 Rue Bélanger, Montreal, QC H1T 1C8", "7401 Rue Hochelaga, Montreal, QC H1N 3M5", "1001 Boulevard Décarie, Montreal, QC H4A 3J1"
+  ),
+  maps = c("https://www.google.com/maps?q=1000+Rue+Saint-Denis,+Montreal,+QC+H2X+0C1", "https://www.google.com/maps?q=3830+Avenue+Lacombe,+Montreal,+QC+H3T+1M5", "https://www.google.com/maps?q=3175+Chemin+de+la+Côte-Sainte-Catherine,+Montreal,+QC+H3T+1C5", "https://www.google.com/maps?q=650+16e+Ave,+Lachine,+QC+H8S+3N5", "https://www.google.com/maps?q=8585+Terr.+Champlain,+LaSalle,+QC+H8P+1C1", "https://www.google.com/maps?q=4000+Boulevard+LaSalle,+Verdun,+QC+H4G+2A3", "https://www.google.com/maps?q=6875+Boulevard+LaSalle,+Verdun,+QC+H4H+1R3", "https://www.google.com/maps?q=5415+Boulevard+de+l'Assomption,+Montreal,+QC+H1T+2M4", "https://www.google.com/maps?q=5400+Boulevard+Gouin+Ouest,+Montreal,+QC+H4J+1C5", "https://www.google.com/maps?q=5400+Boulevard+Gouin+Ouest,+Montreal,+QC+H4J+1C5", "https://www.google.com/maps?q=2180+Rue+Fleury+Est,+Montreal,+QC+H2B+1K3", "https://www.google.com/maps?q=1650+Avenue+Cedar,+Montreal,+QC+H3G+1A4", "https://www.google.com/maps?q=160+Avenue+Stillview,+Pointe-Claire,+QC+H9R+2Y2", "https://www.google.com/maps?q=3755+Chemin+de+la+Côte-Sainte-Catherine,+Montreal,+QC+H3T+1E2", "https://www.google.com/maps?q=1385+Rue+Jean-Talon+Est,+Montreal,+QC+H2E+1S6", "https://www.google.com/maps?q=1560+Rue+Sherbrooke+Est,+Montreal,+QC+H2L+4M1", "https://www.google.com/maps?q=1001+Boulevard+Décarie,+Montreal,+QC+H4A+3J1", "https://www.google.com/maps?q=5655+Rue+Saint-Zotique+Est,+Montreal,+QC+H1T+1P7", "https://www.google.com/maps?q=5000+Rue+Bélanger,+Montreal,+QC+H1T+1C8", "https://www.google.com/maps?q=7401+Rue+Hochelaga,+Montreal,+QC+H1N+3M5", "https://www.google.com/maps?q=1001+Boulevard+Décarie,+Montreal,+QC+H4A+3J1"
+  )
+)
+
 
 
 # set colors:
@@ -171,6 +182,7 @@ ui <- bootstrapPage(
               
               div(
                 class="text-start",
+                span(htmlOutput('selected_hospital_info'), class="pb-3"),
                 span(htmlOutput('selected_hospital_text'), class="pb-3 strong")
               ),
               
@@ -329,34 +341,38 @@ server <- function(input, output, session) {
     # render name of selected hospital
     output$current_hospital <- renderText({ selected_hospital() })
     
+    # render address and links 
+    output$selected_hospital_info <- renderText({
+      hospital_row <- which(hospital_info$hospital == selected_hospital())
+      info <- hospital_info[hospital_row, ]
+      paste0('<div class="p-2">Emergency Room Status for 
+      <a href="', info$link, '" target="_blank" rel="noopener" class="text-primary">', info$hospital, '</a>, ',
+      info$address, '&nbsp;<a href=', info$maps, ' target="_blank" rel="noopener" class="text-muted">Google maps</a><br>
+      </div>')
+    })
     
-    # get current values for selected hospital and render text for selected hospital
+    # get current values for selected hospital in row and render text
     output$selected_hospital_text <- renderText({
-      current_occupancy <- current_data[which(current_data$Hospital == selected_hospital()), "Occupancy Rate (%)"]
-      current_patients_waiting <- current_data[which(current_data$Hospital == selected_hospital()), "Patients Waiting"]
-      current_patients_total <- current_data[which(current_data$Hospital == selected_hospital()), "Patients Total"]
-      # current_wait_hours <- wait_hours[[selected_hospital()]]
-      current_wait_hours_stretcher <- wait_hours_stretcher[[selected_hospital()]]
-      
-      # Check for NAs and show different text if any of them is.na
-      if (any(is.na(c(current_occupancy, current_patients_waiting, current_patients_total)))) {
+      current_row <- which(current_data$Hospital == selected_hospital())
+      current_info <- current_data[current_row, ]
+
+      if (anyNA(current_info)) {  
         '<div class="container h-100 bg-warning px-1 py-3">
-      The data for the selected hospital is currently not available. Please check back later.
-      </div>'
+         The data for the selected hospital is currently not available. Please check back later.
+        </div>'
       } else {
         paste0(
-          '<div class="text-center p-2">Emergency Room Status for ', selected_hospital(), ':</div>',
           '<div class="row text-center row-cols-1 py-3 row-gap-3">',
           '<div class="col-md-4"><div class="container h-100 bg-warning py-2">',
-          "Occupancy Rate: ", "<br><strong>", current_occupancy, "%", "</strong>",
+          "Occupancy Rate: ", "<br><strong>", current_info["Occupancy Rate (%)"], "%", "</strong>",
           "</div></div>",        
           '<div class="col-md-4"><div class="container h-100 bg-warning py-2">',
-          "Current Patient Count: ", '<br><strong>', current_patients_total, "</strong>",
+          "Current Patient Count: ", '<br><strong>', current_info["Patients Total"], "</strong>",
           "</div></div>",
           '<div class="col-md-4"><div class="container h-100 bg-warning py-2">',
-          "Waiting to be Seen: ", "<br><strong>", current_patients_waiting, "</strong>",
+          "Waiting to be Seen: ", "<br><strong>", current_info["Patients Waiting"], "</strong>",
           '</div></div></div>',
-          "Average Stay on stretcher: ", "<strong>", current_wait_hours_stretcher, " hours" , "</strong>", " (previous day)"
+          "Average Stay on stretcher: ", "<strong>", wait_hours_stretcher[[selected_hospital()]], " hours</strong> (previous day)"
         )
       }
     })
@@ -389,7 +405,8 @@ server <- function(input, output, session) {
     
     
   })
-  
+
+
     
   # number of days
   selected_days <- reactiveVal(7)
